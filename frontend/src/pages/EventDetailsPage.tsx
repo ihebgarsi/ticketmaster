@@ -8,7 +8,11 @@ const EventDetailsPage = () => {
     data: event,
     isLoading,
     error,
-  } = useQuery(["event", eventId], () => fetchEventDetails(eventId!));
+  } = useQuery({
+    queryKey: ["event", eventId],
+    queryFn: () => fetchEventDetails(eventId!),
+    enabled: Boolean(eventId),
+  });
 
   if (isLoading) return <div>Loading event details…</div>;
   if (error || !event) return <div>Event not found.</div>;

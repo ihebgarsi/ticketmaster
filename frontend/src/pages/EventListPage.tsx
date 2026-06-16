@@ -3,7 +3,14 @@ import { fetchEvents } from "../api/events";
 import { Link } from "react-router-dom";
 
 const EventListPage = () => {
-  const { data: events, isLoading, error } = useQuery(["events"], fetchEvents);
+  const {
+    data: events,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["events"],
+    queryFn: fetchEvents,
+  });
 
   if (isLoading) return <div>Loading events…</div>;
   if (error) return <div>Unable to load events.</div>;
