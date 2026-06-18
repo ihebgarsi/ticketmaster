@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { listEvents, getEventDetails } from "./events.service";
+import { createEvent } from "./events.controller";
 
 export const eventsRouter = Router();
 
@@ -15,3 +16,5 @@ eventsRouter.get("/:id", async (req, res) => {
   }
   return res.json(event);
 });
+
+eventsRouter.post("/createEvent", createEvent);

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchEvents } from "../api/events";
+import { fetchEvents } from "../api/events.api";
 import { Link } from "react-router-dom";
 
 const EventListPage = () => {

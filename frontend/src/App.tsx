@@ -4,6 +4,7 @@ import EventListPage from "./pages/EventListPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import QueuePage from "./pages/QueuePage";
+import CreateEvent from "./pages/CreateEvent";
 
 const App = () => {
   return (
@@ -12,6 +13,7 @@ const App = () => {
         <nav className="app-nav">
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
+          <Link to="/create-event">Create Event</Link>
         </nav>
       </header>
       <main className="app-main">
@@ -21,6 +23,7 @@ const App = () => {
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/queue" element={<QueuePage />} />
+          <Route path="/create-event" element={<CreateEvent />} />
         </Routes>
       </main>
     </div>
