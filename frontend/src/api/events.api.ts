@@ -1,5 +1,5 @@
 import { api } from "./client";
-import { Event } from "../types/Event";
+import { Event, EventDetails, EventInput } from "../types/Event";
 export const fetchEvents = async () => {
   const response = await api.get("/events");
   return response.data as Array<Event>;
@@ -7,9 +7,7 @@ export const fetchEvents = async () => {
 
 export const fetchEventDetails = async (eventId: string) => {
   const response = await api.get(`/events/${eventId}`);
-  return response.data as Event & {
-    availability: Record<string, number>;
-  };
+  return response.data as EventDetails;
 };
 
 export const createEvent = async (eventData: EventInput) => {

@@ -1,16 +1,30 @@
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createEvent } from "../api/events.api";
-import { EventInput } from "../types/Event";
+import { type Event as ApiEvent, type EventInput } from "../types/Event";
 
 type CreateEventFormValues = EventInput;
 
 const CreateEvent = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { mutate, status } = useMutation<
+    ApiEvent,
+    Error,
+    CreateEventFormValues
+  >({
+    mutationFn: (data: CreateEventFormValues) => createEvent(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      navigate("/events");
+    },
+  });
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<CreateEventFormValues>({
     defaultValues: {
       name: "",
@@ -21,13 +35,8 @@ const CreateEvent = () => {
     },
   });
 
-  const onSubmit = async (data: CreateEventFormValues) => {
-    try {
-      await createEvent(data);
-      navigate("/events");
-    } catch (error) {
-      console.error("Failed to create event", error);
-    }
+  const onSubmit = (data: CreateEventFormValues) => {
+    mutate(data);
   };
 
   return (
@@ -76,9 +85,7 @@ const CreateEvent = () => {
           <textarea id="description" {...register("description")} />
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          Create Event
-        </button>
+        <button type="submit">Create Event</button>
       </form>
     </div>
   );

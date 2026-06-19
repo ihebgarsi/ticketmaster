@@ -6,7 +6,7 @@
     "lib": ["ES2020"],
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "composite": true
   },
   "include": ["vite.config.ts"]
 }

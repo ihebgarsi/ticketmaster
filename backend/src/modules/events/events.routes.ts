@@ -17,4 +17,4 @@ eventsRouter.get("/:id", async (req, res) => {
   return res.json(event);
 });
 
-eventsRouter.post("/createEvent", createEvent);
+eventsRouter.post("/", createEvent);

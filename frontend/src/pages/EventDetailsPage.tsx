@@ -1,14 +1,14 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchEventDetails } from "../api/events.api";
-import { Event } from "../types/Event";
+import { EventDetails } from "../types/Event";
 const EventDetailsPage = () => {
   const { eventId } = useParams();
   const {
     data: event,
     isLoading,
     error,
-  } = useQuery<Event>({
+  } = useQuery<EventDetails>({
     queryKey: ["event", eventId],
     queryFn: () => fetchEventDetails(eventId!),
     enabled: Boolean(eventId),

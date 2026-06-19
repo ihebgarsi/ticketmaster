@@ -1,5 +1,11 @@
 import { Ticket } from "./Ticket";
 
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+};
+
 export type Order = {
   id: string;
   user: User;

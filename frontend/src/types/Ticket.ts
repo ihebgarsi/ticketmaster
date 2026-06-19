@@ -1,3 +1,5 @@
+import { Order } from "./Order";
+
 export type Ticket = {
   type: string;
   price: number;
