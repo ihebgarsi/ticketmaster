@@ -5,6 +5,8 @@ import EventDetailsPage from "./pages/EventDetailsPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import QueuePage from "./pages/QueuePage";
 import CreateEvent from "./pages/CreateEvent";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
 
 const App = () => {
   return (
@@ -14,6 +16,8 @@ const App = () => {
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
           <Link to="/create-event">Create Event</Link>
+          <Link to="/login">Login</Link>
+          <Link to="/signup">Sign Up</Link>
         </nav>
       </header>
       <main className="app-main">
@@ -21,6 +25,8 @@ const App = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/events" element={<EventListPage />} />
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/create-event" element={<CreateEvent />} />
