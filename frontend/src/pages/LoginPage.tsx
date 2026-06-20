@@ -9,12 +9,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const mutation = useMutation<any, Error, Form>({
     mutationFn: (data: Form) => apiLogin(data),
-    onSuccess: (data) => {
-      // store tokens in localStorage for now
-      if (data.accessToken)
-        localStorage.setItem("accessToken", data.accessToken);
-      if (data.refreshToken)
-        localStorage.setItem("refreshToken", data.refreshToken);
+    onSuccess: () => {
       navigate("/");
     },
   });

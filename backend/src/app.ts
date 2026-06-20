@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import "express-async-errors";
 import { json } from "express";
 import { ticketsRouter } from "./modules/tickets/tickets.routes";
@@ -11,7 +12,13 @@ import { rateLimiter } from "./shared/rateLimiter";
 
 export const createApp = () => {
   const app = express();
-  app.use(cors());
+  app.use(
+    cors({
+      origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5323",
+      credentials: true,
+    })
+  );
+  app.use(cookieParser());
   app.use(json());
   app.use(rateLimiter);
 
