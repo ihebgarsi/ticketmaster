@@ -1,6 +1,7 @@
 import { Router } from "express";
+import { authenticate } from "../../shared/auth.middleware";
 import { reserveTicketsHandler } from "./tickets.controller";
 
 export const ticketsRouter = Router();
 
-ticketsRouter.post("/reserve", reserveTicketsHandler);
+ticketsRouter.post("/reserve", authenticate, reserveTicketsHandler);

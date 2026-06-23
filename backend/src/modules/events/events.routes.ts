@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticate, requireAdmin } from "../../shared/auth.middleware";
 import { listEvents, getEventDetails } from "./events.service";
 import { createEvent } from "./events.controller";
 
@@ -17,4 +18,4 @@ eventsRouter.get("/:id", async (req, res) => {
   return res.json(event);
 });
 
-eventsRouter.post("/", createEvent);
+eventsRouter.post("/", authenticate, requireAdmin, createEvent);

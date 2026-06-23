@@ -7,17 +7,33 @@ import QueuePage from "./pages/QueuePage";
 import CreateEvent from "./pages/CreateEvent";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import GuestRoute from "./components/GuestRoute";
+import { useAuth } from "./context/AuthContext";
 
 const App = () => {
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <nav className="app-nav">
           <Link to="/">Home</Link>
           <Link to="/events">Events</Link>
-          <Link to="/create-event">Create Event</Link>
-          <Link to="/login">Login</Link>
-          <Link to="/signup">Sign Up</Link>
+          {isAdmin && <Link to="/create-event">Create Event</Link>}
+          {isAuthenticated ? (
+            <>
+              <span>{user?.name ?? user?.email}</span>
+              <button type="button" onClick={() => void logout()}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Login</Link>
+              <Link to="/signup">Sign Up</Link>
+            </>
+          )}
         </nav>
       </header>
       <main className="app-main">
@@ -25,11 +41,29 @@ const App = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/events" element={<EventListPage />} />
           <Route path="/events/:eventId" element={<EventDetailsPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/queue" element={<QueuePage />} />
-          <Route path="/create-event" element={<CreateEvent />} />
+          <Route
+            path="/login"
+            element={
+              <GuestRoute>
+                <LoginPage />
+              </GuestRoute>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <GuestRoute>
+                <SignupPage />
+              </GuestRoute>
+            }
+          />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/queue" element={<QueuePage />} />
+          </Route>
+          <Route element={<ProtectedRoute requireAdmin />}>
+            <Route path="/create-event" element={<CreateEvent />} />
+          </Route>
         </Routes>
       </main>
     </div>

@@ -4,7 +4,7 @@ import { getRedis } from "./redis";
 let redlock: Redlock;
 
 export const initializeRedlock = () => {
-  const client = getRedis();
+  const client = getRedis() as unknown as Redlock.CompatibleRedisClient;
   redlock = new Redlock([client], {
     retryCount: 3,
     retryDelay: 200,
@@ -20,5 +20,5 @@ export const acquireLock = async (key: string, ttl = 10000) => {
 };
 
 export const releaseLock = async (lock: Redlock.Lock) => {
-  await lock.release();
+  await lock.unlock();
 };

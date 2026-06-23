@@ -1,19 +1,26 @@
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { register as apiRegister } from "../api/auth.api";
 import { useNavigate } from "react-router-dom";
-import { User } from "../types/User";
+import { useAuth } from "../context/AuthContext";
+import type { SignupForm } from "../types/User";
 
 const SignupPage = () => {
   const navigate = useNavigate();
-  const mutation = useMutation<any, Error, User>({
-    mutationFn: (data: User) => apiRegister(data),
-    onSuccess: () => navigate("/login"),
+  const { register: registerUser } = useAuth();
+
+  const mutation = useMutation({
+    mutationFn: (data: SignupForm) =>
+      registerUser({
+        email: data.email,
+        password: data.password,
+        name: data.name,
+      }),
+    onSuccess: () => navigate("/"),
   });
 
-  const { register, handleSubmit } = useForm<User>();
+  const { register, handleSubmit } = useForm<SignupForm>();
 
-  const onSubmit = (data: User) => mutation.mutate(data as any);
+  const onSubmit = (data: SignupForm) => mutation.mutate(data);
 
   return (
     <section>
@@ -45,11 +52,11 @@ const SignupPage = () => {
         </div>
 
         <button type="submit">
-          {mutation.status === "pending" ? "Creating…" : "Sign Up"}
+          {mutation.isPending ? "Creating…" : "Sign Up"}
         </button>
       </form>
-      {mutation.status === "error" && (
-        <p className="error">{(mutation.error as any)?.message}</p>
+      {mutation.isError && (
+        <p className="error">{mutation.error?.message}</p>
       )}
     </section>
   );

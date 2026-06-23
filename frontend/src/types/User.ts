@@ -1,13 +1,24 @@
-import { Order } from "./Order";
+export type UserRole = "USER" | "ADMIN";
 
-export type User = {
-  id: String;
+export type AuthUser = {
+  id: string;
   email: string;
-  name: string;
-  createdAt: Date;
-  orders: Order[];
+  name: string | null;
+  role: UserRole;
+  createdAt: string;
+};
+
+export type AuthResponse = {
+  user: AuthUser;
+  accessToken: string;
+  expiresAt: string;
+};
+
+export type SignupForm = {
+  email: string;
   password: string;
-  confirmPassword: string;
-  dateOfBirth: Date;
-  phone: number;
+  name?: string;
+  confirmPassword?: string;
+  dateOfBirth?: string;
+  phone?: number;
 };

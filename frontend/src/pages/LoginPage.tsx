@@ -1,21 +1,31 @@
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { login as apiLogin } from "../api/auth.api";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext";
 
 type Form = { email: string; password: string };
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const mutation = useMutation<any, Error, Form>({
-    mutationFn: (data: Form) => apiLogin(data),
+  const { login, googleLogin } = useAuth();
+
+  const mutation = useMutation({
+    mutationFn: (data: Form) => login(data.email, data.password),
+    onSuccess: () => {
+      navigate("/");
+    },
+  });
+
+  const googleMutation = useMutation({
+    mutationFn: ({ token }: { token: string }) => googleLogin(token),
     onSuccess: () => {
       navigate("/");
     },
   });
 
   const { register, handleSubmit } = useForm<Form>();
-  const onSubmit = (d: Form) => mutation.mutate(d as any);
+  const onSubmit = (d: Form) => mutation.mutate(d);
 
   return (
     <section>
@@ -30,12 +40,25 @@ const LoginPage = () => {
           <input type="password" {...register("password")} />
         </div>
         <button type="submit">
-          {mutation.status === "pending" ? "Signing in…" : "Sign In"}
+          {mutation.isPending ? "Signing in…" : "Sign In"}
         </button>
       </form>
-      {mutation.status === "error" && (
-        <p className="error">{(mutation.error as any)?.message}</p>
+      {(mutation.isError || googleMutation.isError) && (
+        <p className="error">
+          {(mutation.error ?? googleMutation.error)?.message}
+        </p>
       )}
+      <GoogleLogin
+        onSuccess={(credentialResponse) => {
+          const token = credentialResponse.credential;
+          if (token) {
+            googleMutation.mutate({ token });
+          }
+        }}
+        onError={() => {
+          console.log("Login Failed");
+        }}
+      />
     </section>
   );
 };
