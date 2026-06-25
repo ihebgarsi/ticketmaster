@@ -1,4 +1,5 @@
 import { TicketStatus } from "@prisma/client";
+import { assertQueueAdmission } from "../queue/queue.service";
 import { db } from "../../shared/db";
 import { AppError } from "../../shared/errors";
 import { acquireLock, releaseLock } from "../../shared/lock";
@@ -26,6 +27,8 @@ export const reserveTickets = async (userId: string, ticketIds: string[]) => {
   if (fetchedTickets.some((ticket) => ticket.eventId !== eventId)) {
     throw new AppError("All tickets must belong to the same event", 400);
   }
+
+  await assertQueueAdmission(userId, eventId);
 
   const lock = await acquireLock(`locks:event:${eventId}`, 15000);
   try {

@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
 
@@ -28,37 +28,60 @@ const LoginPage = () => {
   const onSubmit = (d: Form) => mutation.mutate(d);
 
   return (
-    <section>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div>
-          <label>Email</label>
-          <input {...register("email")} />
-        </div>
-        <div>
-          <label>Password</label>
-          <input type="password" {...register("password")} />
-        </div>
-        <button type="submit">
-          {mutation.isPending ? "Signing in…" : "Sign In"}
-        </button>
-      </form>
-      {(mutation.isError || googleMutation.isError) && (
-        <p className="error">
-          {(mutation.error ?? googleMutation.error)?.message}
+    <section className="auth-layout">
+      <div className="auth-copy">
+        <span className="eyebrow">Welcome back</span>
+        <h1>Sign in to continue your ticket journey.</h1>
+        <p>
+          Access event availability, manage reservations, and continue through
+          checkout from one place.
         </p>
-      )}
-      <GoogleLogin
-        onSuccess={(credentialResponse) => {
-          const token = credentialResponse.credential;
-          if (token) {
-            googleMutation.mutate({ token });
-          }
-        }}
-        onError={() => {
-          console.log("Login Failed");
-        }}
-      />
+      </div>
+
+      <div className="form-card">
+        <form className="form-layout" onSubmit={handleSubmit(onSubmit)}>
+          <div className="section-heading compact">
+            <div>
+              <h2>Login</h2>
+              <p>Use your email and password or continue with Google.</p>
+            </div>
+          </div>
+          <div className="form-field">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" {...register("email")} />
+          </div>
+          <div className="form-field">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" {...register("password")} />
+          </div>
+          <button type="submit" className="button-primary button-block">
+            {mutation.isPending ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        {(mutation.isError || googleMutation.isError) && (
+          <p className="error">{(mutation.error ?? googleMutation.error)?.message}</p>
+        )}
+
+        <div className="auth-divider">or continue with</div>
+        <div className="social-login">
+          <GoogleLogin
+            onSuccess={(credentialResponse) => {
+              const token = credentialResponse.credential;
+              if (token) {
+                googleMutation.mutate({ token });
+              }
+            }}
+            onError={() => {
+              console.log("Login Failed");
+            }}
+          />
+        </div>
+
+        <p className="form-footnote">
+          New here? <Link to="/signup">Create your account</Link>
+        </p>
+      </div>
     </section>
   );
 };

@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import EventListPage from "./pages/EventListPage";
 import EventDetailsPage from "./pages/EventDetailsPage";
@@ -12,29 +12,52 @@ import GuestRoute from "./components/GuestRoute";
 import { useAuth } from "./context/AuthContext";
 
 const App = () => {
-  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading, user, logout } = useAuth();
+
+  const userLabel = user?.name ?? user?.email;
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <nav className="app-nav">
-          <Link to="/">Home</Link>
-          <Link to="/events">Events</Link>
-          {isAdmin && <Link to="/create-event">Create Event</Link>}
-          {isAuthenticated ? (
-            <>
-              <span>{user?.name ?? user?.email}</span>
-              <button type="button" onClick={() => void logout()}>
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-              <Link to="/signup">Sign Up</Link>
-            </>
-          )}
-        </nav>
+        <div className="app-header-inner">
+          <Link to="/" className="brand-mark">
+            <span className="brand-mark__badge">TM</span>
+            <span>
+              <strong>Ticket Master</strong>
+              <small>Live events, smoother access</small>
+            </span>
+          </Link>
+          <nav className="app-nav">
+            <NavLink to="/">Home</NavLink>
+            <NavLink to="/events">Events</NavLink>
+            {isAdmin && <NavLink to="/create-event">Create Event</NavLink>}
+          </nav>
+          <div className="app-actions">
+            {isLoading ? (
+              <span className="pill-label">Restoring session...</span>
+            ) : isAuthenticated ? (
+              <>
+                <span className="pill-label">{userLabel}</span>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => void logout()}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/login" className="button-ghost">
+                  Login
+                </NavLink>
+                <NavLink to="/signup" className="button-primary">
+                  Sign Up
+                </NavLink>
+              </>
+            )}
+          </div>
+        </div>
       </header>
       <main className="app-main">
         <Routes>
@@ -66,6 +89,9 @@ const App = () => {
           </Route>
         </Routes>
       </main>
+      <footer className="app-footer">
+        <p>Built for faster discovery, cleaner checkout flows, and better event browsing.</p>
+      </footer>
     </div>
   );
 };

@@ -1,7 +1,15 @@
 import { Router } from "express";
-import { addToQueueHandler, getQueueStatusHandler } from "./queue.controller";
+import { authenticate } from "../../shared/auth.middleware";
+import {
+  addToQueueHandler,
+  getQueueStatusHandler,
+  leaveQueueHandler,
+} from "./queue.controller";
 
 export const queueRouter = Router();
 
+queueRouter.use(authenticate);
+
 queueRouter.post("/enter", addToQueueHandler);
-queueRouter.get("/status/:eventId/:sessionId", getQueueStatusHandler);
+queueRouter.get("/status/:eventId", getQueueStatusHandler);
+queueRouter.delete("/leave/:eventId", leaveQueueHandler);
