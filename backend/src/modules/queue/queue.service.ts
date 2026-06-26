@@ -3,18 +3,21 @@ import { getRedis } from "../../shared/redis";
 
 const QUEUE_KEY = "waiting-room:queue";
 
-export const QUEUE_ADMISSION_LIMIT = Number(
-  process.env.QUEUE_ADMISSION_LIMIT ?? 50
-);
+export const getQueueAdmissionLimit = () =>
+  Number(process.env.QUEUE_ADMISSION_LIMIT ?? 50);
 
 const queueKey = (eventId: string) => `${QUEUE_KEY}:${eventId}`;
 
-const buildQueueStatus = (position: number | null, size: number) => ({
-  position,
-  size,
-  admitted: position !== null && position <= QUEUE_ADMISSION_LIMIT,
-  admissionLimit: QUEUE_ADMISSION_LIMIT,
-});
+const buildQueueStatus = (position: number | null, size: number) => {
+  const admissionLimit = getQueueAdmissionLimit();
+
+  return {
+    position,
+    size,
+    admitted: position !== null && position <= admissionLimit,
+    admissionLimit,
+  };
+};
 
 export const addToQueue = async (sessionId: string, eventId: string) => {
   const redis = getRedis();

@@ -8,3 +8,12 @@ export const reserveTickets = async (payload: { ticketIds: string[] }) => {
     ticketIds: string[];
   };
 };
+
+export const reserveFirstAvailable = async (eventId: string) => {
+  const response = await api.post("/tickets/reserve-first", { eventId });
+  return response.data as {
+    orderId: string;
+    reservedUntil: string;
+    ticketIds: string[];
+  };
+};

@@ -1,5 +1,5 @@
 import { TicketStatus } from "@prisma/client";
-import { assertQueueAdmission } from "../queue/queue.service";
+import { assertQueueAdmission, removeFromQueue } from "../queue/queue.service";
 import { db } from "../../shared/db";
 import { AppError } from "../../shared/errors";
 import { acquireLock, releaseLock } from "../../shared/lock";
@@ -81,17 +81,89 @@ export const reserveTickets = async (userId: string, ticketIds: string[]) => {
   }
 };
 
+export const reserveFirstAvailableForEvent = async (
+  userId: string,
+  eventId: string
+) => {
+  await assertQueueAdmission(userId, eventId);
+
+  const ticket = await db.ticket.findFirst({
+    where: { eventId, status: TicketStatus.AVAILABLE },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (!ticket) {
+    throw new AppError("No tickets available for this event", 404);
+  }
+
+  return reserveTickets(userId, [ticket.id]);
+};
+
 export const releaseExpiredReservations = async () => {
   const now = new Date();
-  await db.ticket.updateMany({
+  const expiredTickets = await db.ticket.findMany({
     where: {
       status: TicketStatus.RESERVED,
       reservedUntil: { lt: now },
     },
-    data: {
-      status: TicketStatus.AVAILABLE,
-      reservedUntil: null,
-      orderId: null,
+    include: {
+      order: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+        },
+      },
     },
   });
+
+  if (!expiredTickets.length) {
+    return;
+  }
+
+  const orderIds = [
+    ...new Set(
+      expiredTickets
+        .map((ticket) => ticket.orderId)
+        .filter((orderId): orderId is string => Boolean(orderId))
+    ),
+  ];
+
+  const queueReleases = new Map<string, string>();
+  for (const ticket of expiredTickets) {
+    if (ticket.order?.userId) {
+      queueReleases.set(ticket.order.userId, ticket.eventId);
+    }
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.ticket.updateMany({
+      where: {
+        status: TicketStatus.RESERVED,
+        reservedUntil: { lt: now },
+      },
+      data: {
+        status: TicketStatus.AVAILABLE,
+        reservedUntil: null,
+        orderId: null,
+      },
+    });
+
+    if (orderIds.length) {
+      await tx.order.updateMany({
+        where: {
+          id: { in: orderIds },
+          status: "PENDING",
+        },
+        data: { status: "CANCELLED" },
+      });
+    }
+  });
+
+  const redis = getRedis();
+  for (const [userId, eventId] of queueReleases) {
+    await removeFromQueue(userId, eventId);
+    await redis.del(`event-availability:${eventId}`);
+  }
 };

@@ -1,10 +1,16 @@
-import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { fetchEventDetails } from "../api/events.api";
+import { getQueueStatus } from "../api/queue.api";
+import { reserveFirstAvailable } from "../api/tickets";
+import { useAuth } from "../context/AuthContext";
 import { EventDetails } from "../types/Event";
 
 const EventDetailsPage = () => {
+  const navigate = useNavigate();
   const { eventId } = useParams();
+  const { isAuthenticated } = useAuth();
+
   const {
     data: event,
     isLoading,
@@ -15,8 +21,24 @@ const EventDetailsPage = () => {
     enabled: Boolean(eventId),
   });
 
+  const { data: queueStatus } = useQuery({
+    queryKey: ["queue-status", eventId],
+    queryFn: () => getQueueStatus(eventId!),
+    enabled: isAuthenticated && Boolean(eventId),
+  });
+
+  const reserveMutation = useMutation({
+    mutationFn: () => reserveFirstAvailable(eventId!),
+    onSuccess: (result) => {
+      navigate(`/checkout?orderId=${result.orderId}`);
+    },
+  });
+
   if (isLoading) return <div className="empty-state">Loading event details...</div>;
   if (error || !event) return <div className="empty-state">Event not found.</div>;
+
+  const isAdmitted = queueStatus?.admitted;
+  const isInQueue = queueStatus?.position !== null;
 
   return (
     <div className="page-stack">
@@ -73,18 +95,68 @@ const EventDetailsPage = () => {
       <section className="cta-panel">
         <div>
           <span className="eyebrow">Next step</span>
-          <h2>Join the waiting room to reserve tickets.</h2>
-          <p>
-            High-demand events require queue admission before ticket
-            reservations are allowed.
-          </p>
+          {!isAuthenticated ? (
+            <>
+              <h2>Sign in to join the waiting room.</h2>
+              <p>Authentication is required before you can queue or checkout.</p>
+            </>
+          ) : isAdmitted ? (
+            <>
+              <h2>You are admitted. Reserve a ticket to continue.</h2>
+              <p>
+                Your queue slot stays active until payment completes or your
+                reservation expires.
+              </p>
+            </>
+          ) : isInQueue ? (
+            <>
+              <h2>You are still in the waiting room.</h2>
+              <p>
+                You are #{queueStatus?.position} of {queueStatus?.size}. Wait for
+                admission before reserving tickets.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>Join the waiting room to reserve tickets.</h2>
+              <p>
+                High-demand events require queue admission before ticket
+                reservations are allowed.
+              </p>
+            </>
+          )}
+          {reserveMutation.isError && (
+            <p className="error">
+              {(reserveMutation.error as Error).message ||
+                "Unable to reserve a ticket."}
+            </p>
+          )}
         </div>
-        <Link
-          to={`/queue?eventId=${event.id}`}
-          className="button-primary"
-        >
-          Join waiting room
-        </Link>
+
+        {!isAuthenticated ? (
+          <Link to="/login" className="button-primary">
+            Login
+          </Link>
+        ) : isAdmitted ? (
+          <button
+            type="button"
+            className="button-primary"
+            disabled={
+              reserveMutation.isPending || (event.availability.AVAILABLE ?? 0) < 1
+            }
+            onClick={() => reserveMutation.mutate()}
+          >
+            {reserveMutation.isPending ? "Reserving..." : "Reserve ticket & checkout"}
+          </button>
+        ) : isInQueue ? (
+          <Link to={`/queue?eventId=${event.id}`} className="button-primary">
+            View queue status
+          </Link>
+        ) : (
+          <Link to={`/queue?eventId=${event.id}`} className="button-primary">
+            Join waiting room
+          </Link>
+        )}
       </section>
     </div>
   );
