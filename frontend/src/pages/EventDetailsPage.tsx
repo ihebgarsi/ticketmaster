@@ -1,13 +1,15 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventDetails } from "../api/events.api";
-import { getQueueStatus } from "../api/queue.api";
-import { reserveFirstAvailable } from "../api/tickets";
+import { getQueueStatus, leaveQueue } from "../api/queue.api";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { EventDetails } from "../types/Event";
+import { getErrorMessage } from "../utils/getErrorMessage";
 
 const EventDetailsPage = () => {
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const { eventId } = useParams();
   const { isAuthenticated } = useAuth();
 
@@ -27,10 +29,22 @@ const EventDetailsPage = () => {
     enabled: isAuthenticated && Boolean(eventId),
   });
 
-  const reserveMutation = useMutation({
-    mutationFn: () => reserveFirstAvailable(eventId!),
-    onSuccess: (result) => {
-      navigate(`/checkout?orderId=${result.orderId}`);
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      await leaveQueue(eventId!);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["queue-status", eventId] });
+      showToast(
+        "success",
+        "Ticket reserved successfully. You have left the waiting room."
+      );
+    },
+    onError: (mutationError) => {
+      showToast(
+        "error",
+        getErrorMessage(mutationError, "Unable to complete checkout right now.")
+      );
     },
   });
 
@@ -102,10 +116,10 @@ const EventDetailsPage = () => {
             </>
           ) : isAdmitted ? (
             <>
-              <h2>You are admitted. Reserve a ticket to continue.</h2>
+              <h2>You are admitted. Continue to checkout.</h2>
               <p>
-                Your queue slot stays active until payment completes or your
-                reservation expires.
+                For now, completing this step will confirm your reservation and
+                remove you from the waiting room.
               </p>
             </>
           ) : isInQueue ? (
@@ -125,12 +139,6 @@ const EventDetailsPage = () => {
               </p>
             </>
           )}
-          {reserveMutation.isError && (
-            <p className="error">
-              {(reserveMutation.error as Error).message ||
-                "Unable to reserve a ticket."}
-            </p>
-          )}
         </div>
 
         {!isAuthenticated ? (
@@ -141,12 +149,12 @@ const EventDetailsPage = () => {
           <button
             type="button"
             className="button-primary"
-            disabled={
-              reserveMutation.isPending || (event.availability.AVAILABLE ?? 0) < 1
-            }
-            onClick={() => reserveMutation.mutate()}
+            disabled={checkoutMutation.isPending}
+            onClick={() => checkoutMutation.mutate()}
           >
-            {reserveMutation.isPending ? "Reserving..." : "Reserve ticket & checkout"}
+            {checkoutMutation.isPending
+              ? "Processing..."
+              : "Reserve ticket & checkout"}
           </button>
         ) : isInQueue ? (
           <Link to={`/queue?eventId=${event.id}`} className="button-primary">
