@@ -9,6 +9,29 @@ const RESERVATION_TTL_SECONDS = Number(
   process.env.RESERVATION_TTL_SECONDS ?? 600
 );
 
+export const listAvailableTicketsForEvent = async (eventId: string) => {
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    select: { id: true },
+  });
+
+  if (!event) {
+    throw new AppError("Event not found", 404);
+  }
+
+  return db.ticket.findMany({
+    where: { eventId, status: TicketStatus.AVAILABLE },
+    orderBy: [{ section: "asc" }, { row: "asc" }, { seatLabel: "asc" }],
+    select: {
+      id: true,
+      section: true,
+      row: true,
+      seatLabel: true,
+      priceCents: true,
+    },
+  });
+};
+
 export const reserveTickets = async (userId: string, ticketIds: string[]) => {
   if (!ticketIds.length) {
     throw new AppError("No ticket IDs provided", 400);

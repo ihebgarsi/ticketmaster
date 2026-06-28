@@ -1,17 +1,35 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchEventDetails } from "../api/events.api";
-import { getQueueStatus, leaveQueue } from "../api/queue.api";
+import { fetchAvailableTickets, fetchEventDetails } from "../api/events.api";
+import { getQueueStatus } from "../api/queue.api";
+import { reserveTickets } from "../api/tickets";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { EventDetails } from "../types/Event";
 import { getErrorMessage } from "../utils/getErrorMessage";
 
+const formatPrice = (cents: number) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+
+const formatSeatLabel = (ticket: {
+  section: string;
+  row: string;
+  seatLabel: string;
+  priceCents: number;
+}) =>
+  `Section ${ticket.section}, Row ${ticket.row}, Seat ${ticket.seatLabel} — ${formatPrice(ticket.priceCents)}`;
+
 const EventDetailsPage = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { eventId } = useParams();
   const { isAuthenticated } = useAuth();
+  const [selectedTicketId, setSelectedTicketId] = useState("");
 
   const {
     data: event,
@@ -29,21 +47,35 @@ const EventDetailsPage = () => {
     enabled: isAuthenticated && Boolean(eventId),
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async () => {
-      await leaveQueue(eventId!);
-    },
-    onSuccess: async () => {
+  const isAdmitted = queueStatus?.admitted;
+  const isInQueue = queueStatus?.position !== null;
+
+  const {
+    data: availableTickets = [],
+    isLoading: isTicketsLoading,
+    error: ticketsError,
+  } = useQuery({
+    queryKey: ["available-tickets", eventId],
+    queryFn: () => fetchAvailableTickets(eventId!),
+    enabled: Boolean(eventId),
+    refetchInterval: isAdmitted ? 5000 : false,
+  });
+
+  const reserveMutation = useMutation({
+    mutationFn: (ticketIds: string[]) => reserveTickets({ ticketIds }),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["available-tickets", eventId],
+      });
       await queryClient.invalidateQueries({ queryKey: ["queue-status", eventId] });
-      showToast(
-        "success",
-        "Ticket reserved successfully. You have left the waiting room."
-      );
+      showToast("success", "Seat reserved. Complete checkout to confirm.");
+      navigate(`/checkout?orderId=${result.orderId}`);
     },
     onError: (mutationError) => {
       showToast(
         "error",
-        getErrorMessage(mutationError, "Unable to complete checkout right now.")
+        getErrorMessage(mutationError, "Unable to reserve this seat right now.")
       );
     },
   });
@@ -51,8 +83,17 @@ const EventDetailsPage = () => {
   if (isLoading) return <div className="empty-state">Loading event details...</div>;
   if (error || !event) return <div className="empty-state">Event not found.</div>;
 
-  const isAdmitted = queueStatus?.admitted;
-  const isInQueue = queueStatus?.position !== null;
+  const selectedTicket = availableTickets.find(
+    (ticket) => ticket.id === selectedTicketId
+  );
+
+  const handleReserve = () => {
+    if (!selectedTicketId) {
+      showToast("error", "Choose a seat before reserving.");
+      return;
+    }
+    reserveMutation.mutate([selectedTicketId]);
+  };
 
   return (
     <div className="page-stack">
@@ -106,6 +147,69 @@ const EventDetailsPage = () => {
         </div>
       </section>
 
+      <section className="form-card">
+        <div className="section-heading compact">
+          <div>
+            <span className="eyebrow">Seat selection</span>
+            <h2>Choose a remaining seat</h2>
+            <p>
+              {isTicketsLoading
+                ? "Loading available seats..."
+                : availableTickets.length
+                  ? `${availableTickets.length} seat${availableTickets.length === 1 ? "" : "s"} still available.`
+                  : "No seats are currently available for this event."}
+            </p>
+          </div>
+        </div>
+
+        {ticketsError ? (
+          <p className="error">Unable to load available seats.</p>
+        ) : (
+          <div className="form-field seat-select-field">
+            <label htmlFor="seat-select">Available seat</label>
+            <select
+              id="seat-select"
+              value={selectedTicketId}
+              onChange={(event) => setSelectedTicketId(event.target.value)}
+              disabled={
+                !isAdmitted ||
+                isTicketsLoading ||
+                availableTickets.length === 0 ||
+                reserveMutation.isPending
+              }
+            >
+              <option value="">
+                {availableTickets.length
+                  ? "Select a seat"
+                  : "No seats available"}
+              </option>
+              {availableTickets.map((ticket) => (
+                <option key={ticket.id} value={ticket.id}>
+                  {formatSeatLabel(ticket)}
+                </option>
+              ))}
+            </select>
+            {selectedTicket && (
+              <p className="seat-select-hint">
+                You selected {formatSeatLabel(selectedTicket)}.
+              </p>
+            )}
+            {!isAuthenticated && (
+              <p className="seat-select-hint">
+                Sign in and join the waiting room to reserve a seat.
+              </p>
+            )}
+            {isAuthenticated && !isAdmitted && (
+              <p className="seat-select-hint">
+                {isInQueue
+                  ? "Wait for queue admission before you can reserve a seat."
+                  : "Join the waiting room to unlock seat selection."}
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
       <section className="cta-panel">
         <div>
           <span className="eyebrow">Next step</span>
@@ -116,10 +220,10 @@ const EventDetailsPage = () => {
             </>
           ) : isAdmitted ? (
             <>
-              <h2>You are admitted. Continue to checkout.</h2>
+              <h2>You are admitted. Reserve your seat.</h2>
               <p>
-                For now, completing this step will confirm your reservation and
-                remove you from the waiting room.
+                Pick an available seat above, then continue to checkout to
+                complete your reservation.
               </p>
             </>
           ) : isInQueue ? (
@@ -149,12 +253,14 @@ const EventDetailsPage = () => {
           <button
             type="button"
             className="button-primary"
-            disabled={checkoutMutation.isPending}
-            onClick={() => checkoutMutation.mutate()}
+            disabled={
+              reserveMutation.isPending ||
+              !selectedTicketId ||
+              availableTickets.length === 0
+            }
+            onClick={handleReserve}
           >
-            {checkoutMutation.isPending
-              ? "Processing..."
-              : "Reserve ticket & checkout"}
+            {reserveMutation.isPending ? "Reserving..." : "Reserve seat & checkout"}
           </button>
         ) : isInQueue ? (
           <Link to={`/queue?eventId=${event.id}`} className="button-primary">
