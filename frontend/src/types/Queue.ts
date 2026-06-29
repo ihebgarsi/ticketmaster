@@ -3,4 +3,8 @@ export type QueueStatus = {
   size: number;
   admitted: boolean;
   admissionLimit: number;
+  effectiveAdmissionLimit: number;
+  ticketsAvailable: number;
+  ticketsUnsold: number;
+  soldOut: boolean;
 };

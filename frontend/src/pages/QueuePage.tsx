@@ -89,9 +89,15 @@ const QueuePage = () => {
           <span className="eyebrow">Waiting room</span>
           <h1>{event.name}</h1>
           <p>
-            {status?.admitted
-              ? "You are admitted. You can now continue to ticket selection."
-              : "High demand is active. We are holding your place in line until a spot opens."}
+            {status?.soldOut
+              ? "This event is sold out. You can leave the queue or wait in case a reservation expires."
+              : status?.admitted
+                ? "You are admitted. You can now continue to ticket selection."
+                : status?.position != null &&
+                    status.effectiveAdmissionLimit != null &&
+                    status.position > status.effectiveAdmissionLimit
+                  ? `Only ${status.effectiveAdmissionLimit} shoppers can enter at a time because ${status.ticketsUnsold ?? 0} ticket${status.ticketsUnsold === 1 ? "" : "s"} remain. You are behind the current shopping window.`
+                  : "High demand is active. We are holding your place in line until a spot opens."}
           </p>
         </div>
         <div className="event-summary">
@@ -108,8 +114,12 @@ const QueuePage = () => {
             <strong>{status?.size ?? 0}</strong>
           </div>
           <div className="summary-item">
-            <span>Admission window</span>
-            <strong>Top {status?.admissionLimit ?? 50}</strong>
+            <span>Seats left</span>
+            <strong>{status?.ticketsAvailable ?? 0}</strong>
+          </div>
+          <div className="summary-item">
+            <span>Shopping window</span>
+            <strong>Top {status?.effectiveAdmissionLimit ?? 0}</strong>
           </div>
         </div>
       </section>
@@ -117,14 +127,34 @@ const QueuePage = () => {
       <section>
         {statusError ? (
           <p className="error">Unable to refresh queue status.</p>
+        ) : status?.soldOut ? (
+          <div className="cta-panel">
+            <div>
+              <span className="eyebrow">Sold out</span>
+              <h2>All tickets have been reserved or sold.</h2>
+              <p>
+                If a reservation expires, seats may reopen and the next users in
+                line will be admitted automatically.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="button-secondary"
+              disabled={leaveMutation.isPending}
+              onClick={() => leaveMutation.mutate()}
+            >
+              {leaveMutation.isPending ? "Leaving..." : "Leave queue"}
+            </button>
+          </div>
         ) : status?.admitted ? (
           <div className="cta-panel">
             <div>
               <span className="eyebrow">You are in</span>
               <h2>Your turn has arrived.</h2>
               <p>
-                You are within the first {status.admissionLimit} users and can
-                reserve tickets for this event.
+                You are within the first {status.effectiveAdmissionLimit} shoppers
+                and {status.ticketsAvailable} seat
+                {status.ticketsAvailable === 1 ? "" : "s"} are ready to reserve.
               </p>
             </div>
             <Link to={`/events/${eventId}`} className="button-primary">
@@ -137,8 +167,12 @@ const QueuePage = () => {
               <span className="eyebrow">Please wait</span>
               <h2>We will refresh your position automatically.</h2>
               <p>
-                {isWaiting
-                  ? `You are #${status.position} of ${status.size}. Stay on this page while we move you forward.`
+                {isWaiting && status
+                  ? status.position != null &&
+                    status.effectiveAdmissionLimit != null &&
+                    status.position > status.effectiveAdmissionLimit
+                    ? `You are #${status.position} of ${status.size}. Only the first ${status.effectiveAdmissionLimit} can shop while ${status.ticketsUnsold} ticket${status.ticketsUnsold === 1 ? "" : "s"} remain.`
+                    : `You are #${status.position} of ${status.size}. Stay on this page while we move you forward.`
                   : "Checking your place in line..."}
               </p>
             </div>

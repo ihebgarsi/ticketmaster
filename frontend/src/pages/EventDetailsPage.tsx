@@ -199,11 +199,19 @@ const EventDetailsPage = () => {
                 Sign in and join the waiting room to reserve a seat.
               </p>
             )}
-            {isAuthenticated && !isAdmitted && (
+            {isAuthenticated && !isAdmitted && isInQueue && queueStatus && (
               <p className="seat-select-hint">
-                {isInQueue
-                  ? "Wait for queue admission before you can reserve a seat."
-                  : "Join the waiting room to unlock seat selection."}
+                {queueStatus.soldOut
+                  ? "This event is sold out. Seat selection will reopen if reservations expire."
+                  : queueStatus.position !== null &&
+                      queueStatus.position > queueStatus.effectiveAdmissionLimit
+                    ? `Only ${queueStatus.effectiveAdmissionLimit} shoppers can select seats right now (${queueStatus.ticketsAvailable} available).`
+                    : "Wait for queue admission before you can reserve a seat."}
+              </p>
+            )}
+            {isAuthenticated && !isAdmitted && !isInQueue && (
+              <p className="seat-select-hint">
+                Join the waiting room to unlock seat selection.
               </p>
             )}
           </div>
@@ -230,8 +238,13 @@ const EventDetailsPage = () => {
             <>
               <h2>You are still in the waiting room.</h2>
               <p>
-                You are #{queueStatus?.position} of {queueStatus?.size}. Wait for
-                admission before reserving tickets.
+                {queueStatus?.soldOut
+                  ? "This event is sold out. Leave the queue or wait in case a reservation expires."
+                  : queueStatus?.position != null &&
+                      queueStatus.effectiveAdmissionLimit != null &&
+                      queueStatus.position > queueStatus.effectiveAdmissionLimit
+                    ? `You are #${queueStatus.position} of ${queueStatus.size}. Only the first ${queueStatus.effectiveAdmissionLimit} shoppers can buy while ${queueStatus.ticketsUnsold} ticket${queueStatus.ticketsUnsold === 1 ? "" : "s"} remain.`
+                    : `You are #${queueStatus?.position} of ${queueStatus?.size}. Wait for admission before reserving tickets.`}
               </p>
             </>
           ) : (

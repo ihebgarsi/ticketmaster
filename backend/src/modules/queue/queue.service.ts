@@ -1,5 +1,6 @@
 import { AppError } from "../../shared/errors";
 import { getRedis } from "../../shared/redis";
+import { getAvailabilityCounts } from "../events/events.service";
 
 const QUEUE_KEY = "waiting-room:queue";
 
@@ -8,14 +9,30 @@ export const getQueueAdmissionLimit = () =>
 
 const queueKey = (eventId: string) => `${QUEUE_KEY}:${eventId}`;
 
-const buildQueueStatus = (position: number | null, size: number) => {
+const buildQueueStatus = async (
+  eventId: string,
+  position: number | null,
+  size: number
+) => {
   const admissionLimit = getQueueAdmissionLimit();
+  const counts = await getAvailabilityCounts(eventId);
+  const ticketsAvailable = counts.AVAILABLE ?? 0;
+  const ticketsReserved = counts.RESERVED ?? 0;
+  const ticketsUnsold = ticketsAvailable + ticketsReserved;
+  const effectiveAdmissionLimit = Math.min(admissionLimit, ticketsUnsold);
 
   return {
     position,
     size,
-    admitted: position !== null && position <= admissionLimit,
+    admitted:
+      position !== null &&
+      ticketsUnsold > 0 &&
+      position <= effectiveAdmissionLimit,
     admissionLimit,
+    effectiveAdmissionLimit,
+    ticketsAvailable,
+    ticketsUnsold,
+    soldOut: ticketsUnsold === 0,
   };
 };
 
@@ -32,7 +49,7 @@ export const addToQueue = async (sessionId: string, eventId: string) => {
   const size = await redis.zcard(key);
   const position = rank !== null ? rank + 1 : size;
 
-  return buildQueueStatus(position, size);
+  return buildQueueStatus(eventId, position, size);
 };
 
 export const getQueueStatus = async (sessionId: string, eventId: string) => {
@@ -42,7 +59,7 @@ export const getQueueStatus = async (sessionId: string, eventId: string) => {
   const size = await redis.zcard(key);
   const position = rank !== null ? rank + 1 : null;
 
-  return buildQueueStatus(position, size);
+  return buildQueueStatus(eventId, position, size);
 };
 
 export const assertQueueAdmission = async (
@@ -57,6 +74,10 @@ export const assertQueueAdmission = async (
       403,
       status
     );
+  }
+
+  if (status.soldOut) {
+    throw new AppError("This event is sold out", 409, status);
   }
 
   if (!status.admitted) {
