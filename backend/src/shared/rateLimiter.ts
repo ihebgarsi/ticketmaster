@@ -9,6 +9,10 @@ export const rateLimiter = async (
   res: Response,
   next: NextFunction
 ) => {
+  if (req.path === "/health" || req.path === "/api/health") {
+    return next();
+  }
+
   const identifier =
     (req.ip || req.headers["x-forwarded-for"]?.toString()) ?? "anonymous";
   const redis = getRedis();

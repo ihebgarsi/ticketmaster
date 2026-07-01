@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.git
+.vscode
+.idea
+npm-debug.log*
+tsconfig.tsbuildinfo

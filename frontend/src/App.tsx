@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
+import ThemeToggle from "./components/ThemeToggle";
 import { useAuth } from "./context/AuthContext";
 
 const App = () => {
@@ -33,6 +34,7 @@ const App = () => {
             {isAdmin && <NavLink to="/create-event">Create Event</NavLink>}
           </nav>
           <div className="app-actions">
+            <ThemeToggle />
             {isLoading ? (
               <span className="pill-label">Restoring session...</span>
             ) : isAuthenticated ? (
